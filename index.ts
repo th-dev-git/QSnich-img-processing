@@ -3,8 +3,7 @@ import { createWorker } from "tesseract.js";
 import * as XLSX from "xlsx";
 import sharp from "sharp";
 import { parse, isValid, max, format, min } from "date-fns";
-import { table } from "console";
-import { type } from "os";
+import RawList from "./raw_user.json";
 
 type Person = {
   name: string;
@@ -18,6 +17,7 @@ type RawData = {
   name: string;
   raw?: string;
 };
+const rawUsers = RawList as RawData[];
 
 function createPerson(path: string) {
   const splited = path.split(" ");
@@ -39,7 +39,9 @@ function createPerson(path: string) {
   await worker.initialize("eng");
 
   const norm = await genNorm(worker);
-  console.table(getIncompleteData(norm));
+  // const incomplete = getIncompleteData(norm)
+  // console.log('incomplete', incomplete.length);
+  // console.table(incomplete);
   // getExcel("norm", norm);
 
   await worker.terminate();
@@ -98,40 +100,15 @@ async function genNorm(worker: Tesseract.Worker) {
   const rawList: RawData[] = [];
   const rootDir = "./norm";
   let files = getFileWithoutDS(rootDir);
-  // files = files.slice(0, 5);
+  // files = files.slice(0, 3);
 
   for (const folder of files) {
     const person = createPerson(folder);
-    console.log("person", person.name);
-    const rawData: RawData = { name: person.name };
-    // await fillPersonData(worker, rootDir, folder, person);
-    const inner = getFileWithoutDS(`${rootDir}/${folder}`);
-    const filename =
-      inner.find((f) => !f.includes("processed") && f.includes("Cep")) ??
-      inner[0];
-    const processedImgPath = await preprocessImg(
-      `${rootDir}/${folder}`,
-      filename
-    );
+    // console.log("person", person.name);
+    await fillPersonData(worker, rootDir, folder, person);
 
-    const {
-      data: { text },
-    } = await worker.recognize(processedImgPath);
-
-    rawData.raw = text;
-    rawList.push(rawData);
-    // persons.push({ ...person });
+    persons.push({ ...person });
   }
-  console.table(rawList);
-  const data = JSON.stringify(rawList);
-
-  // write JSON string to a file
-  fs.writeFile("raw_user.json", data, (err) => {
-    if (err) {
-      throw err;
-    }
-    console.log("JSON data is saved.");
-  });
   // console.table(persons);
   return persons;
 }
@@ -206,6 +183,15 @@ async function preprocessImg(path: string, filename: string) {
   return processedImgPath;
 }
 
+function getStringFromRaw(username: string) {
+  const user = rawUsers.find((r) => r.name === username);
+  if(!user) throw new Error("No raw data found");
+  let value = user.raw ?? '';
+  value = value.split(':').join('\n')
+  let textSplit = value.split(/\r?\n/).map(t => t.trim());
+  return textSplit;
+}
+
 async function getStringFromImg(
   worker: Tesseract.Worker,
   path: string,
@@ -242,18 +228,19 @@ async function fillPersonData(
   const filename =
     inner.find((f) => !f.includes("processed") && f.includes("Cep")) ??
     inner[0];
-  const texts = await getStringFromImg(
-    worker,
-    `${rootDir}/${folder}`,
-    filename
-  );
-
+  // const texts = await getStringFromImg(
+  //   worker,
+  //   `${rootDir}/${folder}`,
+  //   filename
+  // );
+  const texts = getStringFromRaw(person.name)
   person.hn = getHN(texts);
   person.gender = getGender(texts);
   person.birthDate = getBirthDate(texts) || person.birthDate;
   person.film = getFilmDate(texts);
   if (isIncomplete(person)) {
     console.log("isIncomplete", texts);
+    console.table(person);
   }
 }
 
