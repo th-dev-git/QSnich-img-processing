@@ -1,6 +1,8 @@
 lockfileVersion: 5.4
 
 specifiers:
+  '@types/node': ^18.15.5
+  '@types/sharp': ^0.31.1
   sharp: ^0.31.3
   tesseract.js: ^4.0.2
   ts-node-dev: ^2.0.0
@@ -13,7 +15,9 @@ dependencies:
   xlsx: 0.18.5
 
 devDependencies:
-  ts-node-dev: 2.0.0_typescript@5.0.2
+  '@types/node': 18.15.5
+  '@types/sharp': 0.31.1
+  ts-node-dev: 2.0.0_zlbzrxdj56n2qhafx752nt3nlm
   typescript: 5.0.2
 
 packages:
@@ -181,6 +185,16 @@ packages:
 
   /@tsconfig/node16/1.0.3:
     resolution: {integrity: sha512-yOlFc+7UtL/89t2ZhjPvvB/DeAr3r+Dq58IgzsFkOAvVC6NMJXmCGjbptdXdR9qsX7pKcTL+s87FtYREi2dEEQ==}
+    dev: true
+
+  /@types/node/18.15.5:
+    resolution: {integrity: sha512-Ark2WDjjZO7GmvsyFFf81MXuGTA/d6oP38anyxWOL6EREyBKAxKoFHwBhaZxCfLRLpO8JgVXwqOwSwa7jRcjew==}
+    dev: true
+
+  /@types/sharp/0.31.1:
+    resolution: {integrity: sha512-5nWwamN9ZFHXaYEincMSuza8nNfOof8nmO+mcI+Agx1uMUk4/pQnNIcix+9rLPXzKrm1pS34+6WRDbDV0Jn7ag==}
+    dependencies:
+      '@types/node': 18.15.5
     dev: true
 
   /@types/strip-bom/3.0.0:
@@ -920,7 +934,7 @@ packages:
     hasBin: true
     dev: true
 
-  /ts-node-dev/2.0.0_typescript@5.0.2:
+  /ts-node-dev/2.0.0_zlbzrxdj56n2qhafx752nt3nlm:
     resolution: {integrity: sha512-ywMrhCfH6M75yftYvrvNarLEY+SUXtUvU8/0Z6llrHQVBx12GiFk5sStF8UdfE/yfzk9IAq7O5EEbTQsxlBI8w==}
     engines: {node: '>=0.8.0'}
     hasBin: true
@@ -939,7 +953,7 @@ packages:
       rimraf: 2.7.1
       source-map-support: 0.5.21
       tree-kill: 1.2.2
-      ts-node: 10.9.1_typescript@5.0.2
+      ts-node: 10.9.1_zlbzrxdj56n2qhafx752nt3nlm
       tsconfig: 7.0.0
       typescript: 5.0.2
     transitivePeerDependencies:
@@ -948,7 +962,7 @@ packages:
       - '@types/node'
     dev: true
 
-  /ts-node/10.9.1_typescript@5.0.2:
+  /ts-node/10.9.1_zlbzrxdj56n2qhafx752nt3nlm:
     resolution: {integrity: sha512-NtVysVPkxxrwFGUUxGYhfux8k78pQB3JqYBXlLRZgdGUqTO5wU/UyHop5p70iEbGhB7q5KmiZiU0Y3KlJrScEw==}
     hasBin: true
     peerDependencies:
@@ -967,6 +981,7 @@ packages:
       '@tsconfig/node12': 1.0.11
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.3
+      '@types/node': 18.15.5
       acorn: 8.8.2
       acorn-walk: 8.2.0
       arg: 4.1.3
