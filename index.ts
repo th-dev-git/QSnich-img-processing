@@ -2,6 +2,9 @@ import * as fs from "fs";
 import { createWorker } from "tesseract.js";
 import * as XLSX from "xlsx";
 import sharp from "sharp";
+import { parse, isValid, max, format, min } from "date-fns";
+import { table } from "console";
+import { type } from "os";
 
 type Person = {
   name: string;
@@ -11,7 +14,12 @@ type Person = {
   film?: string;
 };
 
-function createPerson(path: string){
+type RawData = {
+  name: string;
+  raw?: string;
+};
+
+function createPerson(path: string) {
   const splited = path.split(" ");
   const firstName = splited[0];
   const lastName = splited[1];
@@ -19,7 +27,7 @@ function createPerson(path: string){
 
   const person: Person = {
     name: `${firstName} ${lastName}`,
-    birthDate,
+    birthDate: format(parse(birthDate, "MM-yyyy", new Date()), "MM/yyyy"),
   };
   return person;
 }
@@ -30,14 +38,13 @@ function createPerson(path: string){
   await worker.loadLanguage("eng");
   await worker.initialize("eng");
 
-  const norm = await genNorm( worker);
-  // getExcel("CLCP", clcp);
+  const norm = await genNorm(worker);
+  console.table(getIncompleteData(norm));
+  // getExcel("norm", norm);
 
   await worker.terminate();
   console.log("end async function");
 })();
-
-
 
 async function genCLCP(worker: Tesseract.Worker) {
   let persons: Person[] = [];
@@ -48,7 +55,7 @@ async function genCLCP(worker: Tesseract.Worker) {
     // name: "กมลภพ เทพขวัญ"
     const person = createPerson(file);
     console.log("person", person.name);
-    
+
     const inner = getFileWithoutDS(`./CLCP/${file}`);
     // console.log("inner", inner);
     for (const innerFile of inner) {
@@ -86,25 +93,47 @@ async function genCLCP(worker: Tesseract.Worker) {
   return persons;
 }
 
-async function genNorm(worker: Tesseract.Worker){
+async function genNorm(worker: Tesseract.Worker) {
   let persons: Person[] = [];
-  let files = getFileWithoutDS("./norm");
-  files = files.slice(0, 2);
+  const rawList: RawData[] = [];
+  const rootDir = "./norm";
+  let files = getFileWithoutDS(rootDir);
+  // files = files.slice(0, 5);
 
   for (const folder of files) {
     const person = createPerson(folder);
     console.log("person", person.name);
-    
-    const inner = getFileWithoutDS(`./norm/${folder}`);
-    const texts = await getStringFromImg(worker, `./norm/${folder}`, inner[0])
-    
-    console.log("🚀 ~ file: index.ts:101 ~ genNorm ~ texts:", texts)
-    person.hn = getHN(texts);
-    person.gender = getGender(texts);
-    persons.push({ ...person });
+    const rawData: RawData = { name: person.name };
+    // await fillPersonData(worker, rootDir, folder, person);
+    const inner = getFileWithoutDS(`${rootDir}/${folder}`);
+    const filename =
+      inner.find((f) => !f.includes("processed") && f.includes("Cep")) ??
+      inner[0];
+    const processedImgPath = await preprocessImg(
+      `${rootDir}/${folder}`,
+      filename
+    );
+
+    const {
+      data: { text },
+    } = await worker.recognize(processedImgPath);
+
+    rawData.raw = text;
+    rawList.push(rawData);
+    // persons.push({ ...person });
   }
-  console.table(persons);
-  return persons
+  console.table(rawList);
+  const data = JSON.stringify(rawList);
+
+  // write JSON string to a file
+  fs.writeFile("raw_user.json", data, (err) => {
+    if (err) {
+      throw err;
+    }
+    console.log("JSON data is saved.");
+  });
+  // console.table(persons);
+  return persons;
 }
 
 function getFileWithoutDS(path: string) {
@@ -132,6 +161,28 @@ function getGender(texts: string[]) {
   return "";
 }
 
+function getDates(texts: string[]) {
+  texts = texts.map((t) => t.substring(0, 10));
+  const dates = texts.map((t) => parse(t, "yyyy-MM-dd", new Date()));
+  const validDate = dates.filter((d) => isValid(d));
+
+  return validDate;
+}
+
+function getFilmDate(texts: string[]) {
+  const dates = getDates(texts);
+  if (dates.length === 0) return;
+  const date = max(dates);
+  return format(date, "MM-yyyy");
+}
+
+function getBirthDate(texts: string[]) {
+  const dates = getDates(texts);
+  if (dates.length === 0) return;
+  const date = min(dates);
+  return format(date, "MM-yyyy");
+}
+
 async function preprocessImg(path: string, filename: string) {
   // const path = `./CLCP/${file}/${innerFile}`;
   const imgPath = `${path}/${filename}`;
@@ -155,9 +206,13 @@ async function preprocessImg(path: string, filename: string) {
   return processedImgPath;
 }
 
-async function getStringFromImg(worker: Tesseract.Worker , path: string, file: string) {
+async function getStringFromImg(
+  worker: Tesseract.Worker,
+  path: string,
+  file: string
+) {
   const processedImgPath = await preprocessImg(path, file);
-  
+
   const {
     data: { text },
   } = await worker.recognize(processedImgPath);
@@ -173,6 +228,35 @@ async function getStringFromImg(worker: Tesseract.Worker , path: string, file: s
   return textSplit;
 }
 
+function getIncompleteData(persons: Person[]) {
+  return persons.filter((p) => isIncomplete(p));
+}
+
+async function fillPersonData(
+  worker: Tesseract.Worker,
+  rootDir: string,
+  folder: string,
+  person: Person
+) {
+  const inner = getFileWithoutDS(`${rootDir}/${folder}`);
+  const filename =
+    inner.find((f) => !f.includes("processed") && f.includes("Cep")) ??
+    inner[0];
+  const texts = await getStringFromImg(
+    worker,
+    `${rootDir}/${folder}`,
+    filename
+  );
+
+  person.hn = getHN(texts);
+  person.gender = getGender(texts);
+  person.birthDate = getBirthDate(texts) || person.birthDate;
+  person.film = getFilmDate(texts);
+  if (isIncomplete(person)) {
+    console.log("isIncomplete", texts);
+  }
+}
+
 function getExcel(prefix: string, data: object[]) {
   const worksheet = XLSX.utils.json_to_sheet(data);
   const workbook = XLSX.utils.book_new();
@@ -180,4 +264,10 @@ function getExcel(prefix: string, data: object[]) {
 
   const date = new Date().toISOString();
   XLSX.writeFile(workbook, `${date}-${prefix}.xlsx`);
+}
+
+function isIncomplete(person: Person) {
+  const values = Object.values(person);
+  const isIncomplete = values.some((v) => v === undefined || v === "");
+  return isIncomplete;
 }

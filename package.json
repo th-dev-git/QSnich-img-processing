@@ -17,6 +17,7 @@
     "typescript": "^5.0.2"
   },
   "dependencies": {
+    "date-fns": "^2.29.3",
     "sharp": "^0.31.3",
     "tesseract.js": "^4.0.2",
     "xlsx": "^0.18.5"
